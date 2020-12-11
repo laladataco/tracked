@@ -8,7 +8,7 @@ class Estimator(Serializer):
             import joblib
         except ImportError:
             return False
-        return isinstance(asset, sklearn.base.BaseEstimator)
+        return isinstance(asset, (sklearn.base.BaseEstimator, sklearn.calibration._CalibratedClassifier))
 
     def serialize(self, asset, path):
         import sklearn

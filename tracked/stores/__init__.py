@@ -26,7 +26,8 @@ class Experiment(object):
 
 
 class Store(ABC):
-    def __init__(self, pulled_asset_dir):
+    def __init__(self, prefix, pulled_asset_dir):
+        self.prefix = prefix
         self.pulled_asset_dir = pulled_asset_dir
 
     def push(self, raw):
@@ -68,9 +69,9 @@ class Store(ABC):
                 summary[name] = {'kind': kind, 'meta': meta}
         return summary
 
-    @abstractmethod
     def _generate_key(self, name, *parts):
-        pass
+        prefix_parts = [] if self.prefix is None else [self.prefix]
+        return '/'.join(prefix_parts + name.rsplit('--', 1) + list(parts))
 
     @abstractmethod
     def _push_object(self, key, filename):
@@ -83,13 +84,8 @@ class Store(ABC):
 
 class LocalStore(Store):
     def __init__(self, dir, prefix=None, pulled_asset_dir=os.path.expanduser('~/.tracked/assets')):
-        super().__init__(pulled_asset_dir)
+        super().__init__(prefix, pulled_asset_dir)
         self.dir = dir
-        self.prefix = prefix
-
-    def _generate_key(self, name, *parts):
-        prefix_parts = [] if self.prefix is None else [self.prefix]
-        return '/'.join(prefix_parts + name.rsplit('--', 1) + list(parts))
 
     def _push_object(self, key, filename):
         full_path = Path(self.dir) / key
@@ -102,16 +98,23 @@ class LocalStore(Store):
 
 class S3Store(Store):
     def __init__(self, bucket, prefix=None, pulled_asset_dir=os.path.expanduser('~/.tracked/assets')):
-        super().__init__(pulled_asset_dir)
+        super().__init__(prefix, pulled_asset_dir)
         self.bucket = bucket
-        self.prefix = prefix
-
-    def _generate_key(self, name, *parts):
-        prefix_parts = [] if self.prefix is None else [self.prefix]
-        return '/'.join(prefix_parts + name.rsplit('--', 1) + list(parts))
 
     def _push_object(self, key, filename):
         self.bucket.upload_file(filename, key)
 
     def _pull_object(self, key, filename):
         self.bucket.download_file(key, filename)
+
+
+class GCSStore(Store):
+    def __init__(self, bucket, prefix=None, pulled_asset_dir=os.path.expanduser('~/.tracked/assets')):
+        super().__init__(prefix, pulled_asset_dir)
+        self.bucket = bucket
+
+    def _push_object(self, key, filename):
+        self.bucket.blob(key).upload_from_filename(filename)
+
+    def _pull_object(self, key, filename):
+        self.bucket.blob(key).download_to_filename(filename)

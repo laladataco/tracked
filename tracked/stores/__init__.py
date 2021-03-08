@@ -6,6 +6,7 @@ from pathlib import Path
 from shutil import copyfile
 
 from tracked.serializers import serialize, deserialize
+from tracked.utils import parse_name
 
 
 class Experiment(object):
@@ -71,7 +72,7 @@ class Store(ABC):
 
     def _generate_key(self, name, *parts):
         prefix_parts = [] if self.prefix is None else [self.prefix]
-        return '/'.join(prefix_parts + name.rsplit('--', 1) + list(parts))
+        return '/'.join(prefix_parts + parse_name(name) + list(parts))
 
     @abstractmethod
     def _push_object(self, key, filename):
